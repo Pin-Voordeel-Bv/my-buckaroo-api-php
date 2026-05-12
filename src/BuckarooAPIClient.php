@@ -65,4 +65,16 @@ final class BuckarooAPIClient
     ): ApiKey {
         return $this->apiClient->createApiKey($accessToken, $name, $scopes);
     }
+
+    /**
+     * Search sales transactions using a stored API key.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchTransactions(
+        string $apiKey,
+        array $filters = [],
+    ): TransactionSearchResult {
+        return $this->apiClient->searchTransactions($apiKey, $filters);
+    }
 }

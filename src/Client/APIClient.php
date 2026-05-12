@@ -10,6 +10,7 @@ use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use PinVandaag\BuckarooAPI\Exception\BuckarooAPIException;
 use PinVandaag\BuckarooAPI\Model\AccessToken;
+use PinVandaag\BuckarooAPI\Model\TransactionSearchResult;
 use Psr\Log\LoggerAwareTrait;
 use SensitiveParameter;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
@@ -165,6 +166,55 @@ final class APIClient
         }
 
         return $apiKey;
+    }
+
+    /**
+     * Search Buckaroo sales transactions using an API key.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchTransactions(
+        string $apiKey,
+        array $filters = [],
+    ): TransactionSearchResult {
+        $payload = array_filter(
+            $filters,
+            static fn (mixed $value): bool => $value !== null && $value !== []
+        );
+
+        if (! isset($payload['limit'])) {
+            $payload['limit'] = 100;
+        }
+
+        try {
+            $response = $this->client->request(
+                'POST',
+                $this->uri('/v1/sales/transactions/search'),
+                [
+                    'headers' => [
+                        'X-API-KEY' => $apiKey,
+                        'Accept' => 'application/hal+json',
+                        'Content-Type' => 'application/json',
+                    ],
+                    'body' => $this->serializer->serialize($payload, 'json'),
+                ],
+            );
+        } catch (Throwable $exception) {
+            throw new BuckarooAPIException('Could not search Buckaroo transactions.', 0, $exception);
+        }
+
+        $body = (string) $response->getBody();
+
+        try {
+            /** @var TransactionSearchResult $result */
+            $result = $this->serializer->deserialize($body, TransactionSearchResult::class, 'json');
+        } catch (SerializerException $exception) {
+            throw new BuckarooAPIException('Could not deserialize Buckaroo transaction search response.', 0, $exception);
+        }
+
+        return $result;
     }
 
     private function uri(string $path): string
