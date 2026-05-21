@@ -18,6 +18,7 @@ use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
 use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
 use PinVandaag\BuckarooAPI\Model\TransactionSearchResult;
 use Psr\Log\LoggerAwareTrait;
+use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerException;
@@ -391,37 +392,21 @@ final class APIClient
     ): object {
         $payload = $this->filterPayload($filters);
 
-        try {
-            $response = $this->client->request(
-                'POST',
-                $this->uri($endpoint),
-                [
-                    'headers' => [
+        $response = $this->requestHal(
+            method: 'POST',
+            endpoint: $endpoint,
+            options: [
+                'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
                         'Accept' => 'application/hal+json',
                         'Content-Type' => 'application/json',
                     ],
                     'body' => $this->serializer->serialize($payload, 'json'),
                 ],
-            );
-        } catch (Throwable $exception) {
-            throw new BuckarooAPIException(sprintf('Could not %s.', $actionDescription), 0, $exception);
-        }
+            actionDescription: $actionDescription,
+        );
 
-        $body = (string) $response->getBody();
-
-        try {
-            /** @var T $result */
-            $result = $this->serializer->deserialize($body, $responseClass, 'json');
-        } catch (SerializerException $exception) {
-            throw new BuckarooAPIException(
-                sprintf('Could not deserialize Buckaroo response for %s.', $actionDescription),
-                0,
-                $exception
-            );
-        }
-
-        return $result;
+        return $this->deserializeResponse($response, $responseClass, $actionDescription);
     }
 
     /**
@@ -442,36 +427,20 @@ final class APIClient
     ): object {
         $query = $this->filterPayload($query);
 
-        try {
-            $response = $this->client->request(
-                'GET',
-                $this->uri($endpoint),
-                [
-                    'headers' => [
+        $response = $this->requestHal(
+            method: 'GET',
+            endpoint: $endpoint,
+            options: [
+                'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
                         'Accept' => 'application/hal+json',
                     ],
                     'query' => $query,
                 ],
-            );
-        } catch (Throwable $exception) {
-            throw new BuckarooAPIException(sprintf('Could not %s.', $actionDescription), 0, $exception);
-        }
+            actionDescription: $actionDescription,
+        );
 
-        $body = (string) $response->getBody();
-
-        try {
-            /** @var T $result */
-            $result = $this->serializer->deserialize($body, $responseClass, 'json');
-        } catch (SerializerException $exception) {
-            throw new BuckarooAPIException(
-                sprintf('Could not deserialize Buckaroo response for %s.', $actionDescription),
-                0,
-                $exception
-            );
-        }
-
-        return $result;
+        return $this->deserializeResponse($response, $responseClass, $actionDescription);
     }
 
     /**
@@ -493,23 +462,89 @@ final class APIClient
     ): object {
         $payload = $this->filterPayload($payload);
 
-        try {
-            $response = $this->client->request(
-                'PATCH',
-                $this->uri($endpoint),
-                [
-                    'headers' => [
+        $response = $this->requestHal(
+            method: 'PATCH',
+            endpoint: $endpoint,
+            options: [
+                'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
                         'Accept' => 'application/hal+json',
                         'Content-Type' => 'application/json',
                     ],
                     'body' => $this->serializer->serialize($payload, 'json'),
                 ],
+            actionDescription: $actionDescription,
+        );
+
+        return $this->deserializeResponse($response, $responseClass, $actionDescription);
+    }
+
+    /**
+     * @throws BuckarooAPIException
+     */
+    private function deleteHal(
+        string $endpoint,
+        string $accessToken,
+        string $actionDescription,
+    ): void {
+        $response = $this->requestHal(
+            method: 'DELETE',
+            endpoint: $endpoint,
+            options: [
+                'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Accept' => 'application/hal+json',
+                    ],
+                ],
+            actionDescription: $actionDescription,
+        );
+
+        $statusCode = $response->getStatusCode();
+
+        if ($statusCode !== 204 && ($statusCode < 200 || $statusCode >= 300)) {
+            throw new BuckarooAPIException(
+                sprintf('Buckaroo request to %s failed with HTTP %d.', $endpoint, $statusCode),
+                $statusCode
+            );
+        }
+    }
+ 
+    /**
+     * @param array<string, mixed> $options
+     *
+     * @throws BuckarooAPIException
+     */
+    private function requestHal(
+        string $method,
+        string $endpoint,
+        array $options,
+        string $actionDescription,
+    ): ResponseInterface {
+        try {
+            return $this->client->request(
+                $method,
+                $this->uri($endpoint),
+                $options,
             );
         } catch (Throwable $exception) {
             throw new BuckarooAPIException(sprintf('Could not %s.', $actionDescription), 0, $exception);
         }
+    }
 
+    /**
+     * @template T of object
+     *
+     * @param class-string<T> $responseClass
+     *
+     * @return T
+     *
+     * @throws BuckarooAPIException
+     */
+    private function deserializeResponse(
+        ResponseInterface $response,
+        string $responseClass,
+        string $actionDescription,
+    ): object {
         $body = (string) $response->getBody();
 
         try {
@@ -524,39 +559,6 @@ final class APIClient
         }
 
         return $result;
-    }
-
-    /**
-     * @throws BuckarooAPIException
-     */
-    private function deleteHal(
-        string $endpoint,
-        string $accessToken,
-        string $actionDescription,
-    ): void {
-        try {
-            $response = $this->client->request(
-                'DELETE',
-                $this->uri($endpoint),
-                [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Accept' => 'application/hal+json',
-                    ],
-                ],
-            );
-        } catch (Throwable $exception) {
-            throw new BuckarooAPIException(sprintf('Could not %s.', $actionDescription), 0, $exception);
-        }
-
-        $statusCode = $response->getStatusCode();
-
-        if ($statusCode !== 204 && ($statusCode < 200 || $statusCode >= 300)) {
-            throw new BuckarooAPIException(
-                sprintf('Buckaroo request to %s failed with HTTP %d.', $endpoint, $statusCode),
-                $statusCode
-            );
-        }
     }
 
     /**
