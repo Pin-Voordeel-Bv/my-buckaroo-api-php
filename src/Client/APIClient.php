@@ -11,7 +11,11 @@ use GuzzleHttp\Exception\RequestException;
 use PinVandaag\BuckarooAPI\Exception\BuckarooAPIException;
 use PinVandaag\BuckarooAPI\Model\AccessToken;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
+use PinVandaag\BuckarooAPI\Model\Customer;
 use PinVandaag\BuckarooAPI\Model\CustomerSearchResult;
+use PinVandaag\BuckarooAPI\Model\Merchant;
+use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
+use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
 use PinVandaag\BuckarooAPI\Model\TransactionSearchResult;
 use Psr\Log\LoggerAwareTrait;
 use SensitiveParameter;
@@ -172,6 +176,35 @@ final class APIClient
     }
 
     /**
+     * Add a new Buckaroo customer or update an existing customer by reference.
+     *
+     * @param array<string, mixed> $customer
+     *
+     * @throws BuckarooAPIException
+     */
+    public function createOrUpdateCustomer(
+        string $accessToken,
+        array $customer,
+    ): Customer {
+        $payload = $this->filterPayload($customer);
+
+        if (($payload['reference'] ?? null) === null || $payload['reference'] === '') {
+            throw new BuckarooAPIException('Buckaroo customer payload requires a reference.');
+        }
+
+        /** @var Customer $createdCustomer */
+        $createdCustomer = $this->postHalSearch(
+            endpoint: '/v1/customers',
+            accessToken: $accessToken,
+            filters: $payload,
+            responseClass: Customer::class,
+            actionDescription: 'create or update Buckaroo customer',
+        );
+
+        return $createdCustomer;
+    }
+
+    /**
      * Search Buckaroo customers.
      *
      * @param array<string, mixed> $filters
@@ -192,6 +225,90 @@ final class APIClient
         );
 
         return $result;
+    }
+
+    /**
+     * Get merchant details.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getMerchant(
+        string $accessToken,
+    ): Merchant {
+        /** @var Merchant $merchant */
+        $merchant = $this->getHal(
+            endpoint: '/v1/merchant',
+            accessToken: $accessToken,
+            responseClass: Merchant::class,
+            actionDescription: 'get Buckaroo merchant details',
+        );
+
+        return $merchant;
+    }
+
+    /**
+     * Update merchant details.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function updateMerchant(
+        string $accessToken,
+        string $defaultLanguage,
+    ): Merchant {
+        /** @var Merchant $merchant */
+        $merchant = $this->patchHal(
+            endpoint: '/v1/merchant',
+            accessToken: $accessToken,
+            payload: [
+                'defaultLanguage' => $defaultLanguage,
+            ],
+            responseClass: Merchant::class,
+            actionDescription: 'update Buckaroo merchant details',
+        );
+
+        return $merchant;
+    }
+
+    /**
+     * Get merchant settings/features.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getMerchantFeatures(
+        string $accessToken,
+        ?string $continuationToken = null,
+    ): MerchantFeatures {
+        /** @var MerchantFeatures $features */
+        $features = $this->getHal(
+            endpoint: '/v1/merchant/features',
+            accessToken: $accessToken,
+            responseClass: MerchantFeatures::class,
+            actionDescription: 'get Buckaroo merchant features',
+            query: [
+                'continuationToken' => $continuationToken,
+            ],
+        );
+
+        return $features;
+    }
+
+    /**
+     * Get merchant legal entity.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getMerchantLegalEntity(
+        string $accessToken,
+    ): MerchantLegalEntity {
+        /** @var MerchantLegalEntity $legalEntity */
+        $legalEntity = $this->getHal(
+            endpoint: '/v1/merchant/legalentity',
+            accessToken: $accessToken,
+            responseClass: MerchantLegalEntity::class,
+            actionDescription: 'get Buckaroo merchant legal entity',
+        );
+
+        return $legalEntity;
     }
 
     /**
@@ -241,6 +358,108 @@ final class APIClient
         try {
             $response = $this->client->request(
                 'POST',
+                $this->uri($endpoint),
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Accept' => 'application/hal+json',
+                        'Content-Type' => 'application/json',
+                    ],
+                    'body' => $this->serializer->serialize($payload, 'json'),
+                ],
+            );
+        } catch (Throwable $exception) {
+            throw new BuckarooAPIException(sprintf('Could not %s.', $actionDescription), 0, $exception);
+        }
+
+        $body = (string) $response->getBody();
+
+        try {
+            /** @var T $result */
+            $result = $this->serializer->deserialize($body, $responseClass, 'json');
+        } catch (SerializerException $exception) {
+            throw new BuckarooAPIException(
+                sprintf('Could not deserialize Buckaroo response for %s.', $actionDescription),
+                0,
+                $exception
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * @template T of object
+     *
+     * @param class-string<T> $responseClass
+     *
+     * @return T
+     *
+     * @throws BuckarooAPIException
+     */
+    private function getHal(
+        string $endpoint,
+        string $accessToken,
+        string $responseClass,
+        string $actionDescription,
+        array $query = [],
+    ): object {
+        $query = $this->filterPayload($query);
+
+        try {
+            $response = $this->client->request(
+                'GET',
+                $this->uri($endpoint),
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Accept' => 'application/hal+json',
+                    ],
+                    'query' => $query,
+                ],
+            );
+        } catch (Throwable $exception) {
+            throw new BuckarooAPIException(sprintf('Could not %s.', $actionDescription), 0, $exception);
+        }
+
+        $body = (string) $response->getBody();
+
+        try {
+            /** @var T $result */
+            $result = $this->serializer->deserialize($body, $responseClass, 'json');
+        } catch (SerializerException $exception) {
+            throw new BuckarooAPIException(
+                sprintf('Could not deserialize Buckaroo response for %s.', $actionDescription),
+                0,
+                $exception
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * @template T of object
+     *
+     * @param array<string, mixed> $payload
+     * @param class-string<T> $responseClass
+     *
+     * @return T
+     *
+     * @throws BuckarooAPIException
+     */
+    private function patchHal(
+        string $endpoint,
+        string $accessToken,
+        array $payload,
+        string $responseClass,
+        string $actionDescription,
+    ): object {
+        $payload = $this->filterPayload($payload);
+
+        try {
+            $response = $this->client->request(
+                'PATCH',
                 $this->uri($endpoint),
                 [
                     'headers' => [

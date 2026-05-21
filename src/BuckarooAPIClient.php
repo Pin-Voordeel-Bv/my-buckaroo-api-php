@@ -8,7 +8,11 @@ use GuzzleHttp\Client;
 use PinVandaag\BuckarooAPI\Client\APIClient;
 use PinVandaag\BuckarooAPI\Model\AccessToken;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
+use PinVandaag\BuckarooAPI\Model\Customer;
 use PinVandaag\BuckarooAPI\Model\CustomerSearchResult;
+use PinVandaag\BuckarooAPI\Model\Merchant;
+use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
+use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
 use PinVandaag\BuckarooAPI\Model\TransactionSearchResult;
 use Psr\Log\LoggerInterface;
 use SensitiveParameter;
@@ -70,6 +74,18 @@ final class BuckarooAPIClient
     }
 
     /**
+     * Add a new customer or update an existing customer by reference.
+     *
+     * @param array<string, mixed> $customer
+     */
+    public function createOrUpdateCustomer(
+        string $accessToken,
+        array $customer,
+    ): Customer {
+        return $this->apiClient->createOrUpdateCustomer($accessToken, $customer);
+    }
+
+    /**
      * Search customers.
      *
      * @param array<string, mixed> $filters
@@ -79,6 +95,44 @@ final class BuckarooAPIClient
         array $filters = [],
     ): CustomerSearchResult {
         return $this->apiClient->searchCustomers($accessToken, $filters);
+    }
+
+    /**
+     * Get merchant details.
+     */
+    public function getMerchant(
+        string $accessToken,
+    ): Merchant {
+        return $this->apiClient->getMerchant($accessToken);
+    }
+
+    /**
+     * Update merchant details.
+     */
+    public function updateMerchant(
+        string $accessToken,
+        string $defaultLanguage,
+    ): Merchant {
+        return $this->apiClient->updateMerchant($accessToken, $defaultLanguage);
+    }
+
+    /**
+     * Get merchant settings/features.
+     */
+    public function getMerchantFeatures(
+        string $accessToken,
+        ?string $continuationToken = null,
+    ): MerchantFeatures {
+        return $this->apiClient->getMerchantFeatures($accessToken, $continuationToken);
+    }
+
+    /**
+     * Get merchant legal entity.
+     */
+    public function getMerchantLegalEntity(
+        string $accessToken,
+    ): MerchantLegalEntity {
+        return $this->apiClient->getMerchantLegalEntity($accessToken);
     }
 
     /**
