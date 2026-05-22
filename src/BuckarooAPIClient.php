@@ -11,6 +11,10 @@ use PinVandaag\BuckarooAPI\Model\AccountPayoutSettings;
 use PinVandaag\BuckarooAPI\Model\AccountSearchResult;
 use PinVandaag\BuckarooAPI\Model\Account;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
+use PinVandaag\BuckarooAPI\Model\Application;
+use PinVandaag\BuckarooAPI\Model\ApplicationInstallation;
+use PinVandaag\BuckarooAPI\Model\ApplicationInstallationSearchResult;
+use PinVandaag\BuckarooAPI\Model\ApplicationSearchResult;
 use PinVandaag\BuckarooAPI\Model\Customer;
 use PinVandaag\BuckarooAPI\Model\CustomerSearchResult;
 use PinVandaag\BuckarooAPI\Model\GlobalSearchResult;
@@ -125,6 +129,64 @@ final class BuckarooAPIClient
         array $payload,
     ): AccountPayoutSettings {
         return $this->apiClient->updateAccountPayoutSettings($accessToken, $id, $payload);
+    }
+
+    /**
+     * Search applications.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchApplications(
+        string $accessToken,
+        array $filters = [],
+    ): ApplicationSearchResult {
+        return $this->apiClient->searchApplications($accessToken, $filters);
+    }
+
+    /**
+     * Get application by id.
+     */
+    public function getApplication(
+        string $accessToken,
+        string $id,
+    ): Application {
+        return $this->apiClient->getApplication($accessToken, $id);
+    }
+
+    /**
+     * Create application.
+     *
+     * @param array<string, mixed> $application
+     */
+    public function createApplication(
+        string $accessToken,
+        array $application,
+    ): Application {
+        return $this->apiClient->createApplication($accessToken, $application);
+    }
+
+    /**
+     * Get installations for an application.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchApplicationInstallations(
+        string $accessToken,
+        string $id,
+        array $filters = [],
+    ): ApplicationInstallationSearchResult {
+        return $this->apiClient->searchApplicationInstallations($accessToken, $id, $filters);
+    }
+
+    /**
+     * Get installation for an application.
+     */
+    public function getApplicationInstallation(
+        string $accessToken,
+        string $id,
+        string $installationId,
+    ): ApplicationInstallation {
+        return $this->apiClient->getApplicationInstallation($accessToken, $id, $installationId);
     }
 
     /**

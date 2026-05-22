@@ -14,6 +14,10 @@ use PinVandaag\BuckarooAPI\Model\AccountPayoutSettings;
 use PinVandaag\BuckarooAPI\Model\AccountSearchResult;
 use PinVandaag\BuckarooAPI\Model\Account;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
+use PinVandaag\BuckarooAPI\Model\Application;
+use PinVandaag\BuckarooAPI\Model\ApplicationInstallation;
+use PinVandaag\BuckarooAPI\Model\ApplicationInstallationSearchResult;
+use PinVandaag\BuckarooAPI\Model\ApplicationSearchResult;
 use PinVandaag\BuckarooAPI\Model\Customer;
 use PinVandaag\BuckarooAPI\Model\CustomerSearchResult;
 use PinVandaag\BuckarooAPI\Model\GlobalSearchResult;
@@ -278,6 +282,141 @@ final class APIClient
         );
 
         return $settings;
+    }
+
+    /**
+     * Search applications.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchApplications(
+        string $accessToken,
+        array $filters = [],
+    ): ApplicationSearchResult {
+        /** @var ApplicationSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/applications/search',
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: ApplicationSearchResult::class,
+            actionDescription: 'search Buckaroo applications',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Get application by id.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getApplication(
+        string $accessToken,
+        string $id,
+    ): Application {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo application request requires an id.');
+        }
+
+        /** @var Application $application */
+        $application = $this->getHal(
+            endpoint: sprintf('/v1/applications/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: Application::class,
+            actionDescription: sprintf('get Buckaroo application "%s"', $id),
+        );
+
+        return $application;
+    }
+
+    /**
+     * Create application.
+     *
+     * @param array<string, mixed> $application
+     *
+     * @throws BuckarooAPIException
+     */
+    public function createApplication(
+        string $accessToken,
+        array $application,
+    ): Application {
+        $payload = $this->filterPayload($application);
+
+        foreach (['name', 'applicationType', 'scopes'] as $requiredField) {
+            if (($payload[$requiredField] ?? null) === null || $payload[$requiredField] === '') {
+                throw new BuckarooAPIException(sprintf('Buckaroo application payload requires "%s".', $requiredField));
+            }
+        }
+
+        /** @var Application $createdApplication */
+        $createdApplication = $this->postHalSearch(
+            endpoint: '/v1/applications',
+            accessToken: $accessToken,
+            filters: $payload,
+            responseClass: Application::class,
+            actionDescription: 'create Buckaroo application',
+        );
+
+        return $createdApplication;
+    }
+
+    /**
+     * Get installations for an application.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchApplicationInstallations(
+        string $accessToken,
+        string $id,
+        array $filters = [],
+    ): ApplicationInstallationSearchResult {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo application installations search requires an application id.');
+        }
+
+        /** @var ApplicationInstallationSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: sprintf('/v1/applications/%s/installations/search', rawurlencode($id)),
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: ApplicationInstallationSearchResult::class,
+            actionDescription: sprintf('search Buckaroo application "%s" installations', $id),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Get installation for an application.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getApplicationInstallation(
+        string $accessToken,
+        string $id,
+        string $installationId,
+    ): ApplicationInstallation {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo application installation request requires an application id.');
+        }
+
+        if ($installationId === '') {
+            throw new BuckarooAPIException('Buckaroo application installation request requires an installation id.');
+        }
+
+        /** @var ApplicationInstallation $installation */
+        $installation = $this->getHal(
+            endpoint: sprintf('/v1/applications/%s/installations/%s', rawurlencode($id), rawurlencode($installationId)),
+            accessToken: $accessToken,
+            responseClass: ApplicationInstallation::class,
+            actionDescription: sprintf('get Buckaroo application "%s" installation "%s"', $id, $installationId),
+        );
+
+        return $installation;
     }
 
     /**
