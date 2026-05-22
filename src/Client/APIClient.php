@@ -23,6 +23,8 @@ use PinVandaag\BuckarooAPI\Model\InvoiceSearchResult;
 use PinVandaag\BuckarooAPI\Model\Merchant;
 use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
 use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
+use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscription;
+use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscriptionSearchResult;
 use PinVandaag\BuckarooAPI\Model\Sale;
 use PinVandaag\BuckarooAPI\Model\SaleSearchResult;
 use PinVandaag\BuckarooAPI\Model\Store;
@@ -459,6 +461,122 @@ final class APIClient
         );
 
         return $legalEntity;
+    }
+
+    /**
+     * Search payment method subscriptions.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchPaymentMethodSubscriptions(
+        string $accessToken,
+        array $filters = [],
+    ): PaymentMethodSubscriptionSearchResult {
+        /** @var PaymentMethodSubscriptionSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/paymentmethods/subscriptions/search',
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: PaymentMethodSubscriptionSearchResult::class,
+            actionDescription: 'search Buckaroo payment method subscriptions',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Get a specific payment method subscription by id.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getPaymentMethodSubscription(
+        string $accessToken,
+        string $id,
+    ): PaymentMethodSubscription {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo payment method subscription request requires an id.');
+        }
+
+        /** @var PaymentMethodSubscription $subscription */
+        $subscription = $this->getHal(
+            endpoint: sprintf('/v1/paymentmethods/subscriptions/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: PaymentMethodSubscription::class,
+            actionDescription: sprintf('get Buckaroo payment method subscription "%s"', $id),
+        );
+
+        return $subscription;
+    }
+
+    /**
+     * Patch payment method subscription.
+     *
+     * @param array<string, mixed> $payload
+     *
+     * @throws BuckarooAPIException
+     */
+    public function updatePaymentMethodSubscription(
+        string $accessToken,
+        string $id,
+        array $payload,
+    ): PaymentMethodSubscription {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo payment method subscription update requires an id.');
+        }
+
+        $payload = $this->filterPayload($payload);
+
+        if (($payload['action'] ?? null) === null || $payload['action'] === '') {
+            throw new BuckarooAPIException('Buckaroo payment method subscription update requires an action.');
+        }
+
+        /** @var PaymentMethodSubscription $subscription */
+        $subscription = $this->patchHal(
+            endpoint: sprintf('/v1/paymentmethods/subscriptions/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            payload: $payload,
+            responseClass: PaymentMethodSubscription::class,
+            actionDescription: sprintf('update Buckaroo payment method subscription "%s"', $id),
+        );
+
+        return $subscription;
+    }
+
+    /**
+     * Reprioritise payment method subscriptions.
+     *
+     * @param array<int, string> $orderedSubscriptionIds
+     *
+     * @throws BuckarooAPIException
+     */
+    public function reprioritisePaymentMethodSubscriptions(
+        string $accessToken,
+        string $code,
+        array $orderedSubscriptionIds,
+    ): PaymentMethodSubscriptionSearchResult {
+        if ($code === '') {
+            throw new BuckarooAPIException('Buckaroo payment method subscription reprioritise requires a code.');
+        }
+
+        if ($orderedSubscriptionIds === []) {
+            throw new BuckarooAPIException('Buckaroo payment method subscription reprioritise requires orderedSubscriptionIds.');
+        }
+
+        /** @var PaymentMethodSubscriptionSearchResult $result */
+        $result = $this->patchHal(
+            endpoint: '/v1/paymentmethods/subscriptions/reprioritise',
+            accessToken: $accessToken,
+            payload: [
+                'code' => $code,
+                'orderedSubscriptionIds' => array_values($orderedSubscriptionIds),
+            ],
+            responseClass: PaymentMethodSubscriptionSearchResult::class,
+            actionDescription: sprintf('reprioritise Buckaroo payment method subscriptions for "%s"', $code),
+        );
+
+        return $result;
     }
 
     /**

@@ -20,6 +20,8 @@ use PinVandaag\BuckarooAPI\Model\InvoiceSearchResult;
 use PinVandaag\BuckarooAPI\Model\Merchant;
 use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
 use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
+use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscription;
+use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscriptionSearchResult;
 use PinVandaag\BuckarooAPI\Model\Sale;
 use PinVandaag\BuckarooAPI\Model\SaleSearchResult;
 use PinVandaag\BuckarooAPI\Model\Store;
@@ -211,6 +213,54 @@ final class BuckarooAPIClient
         string $accessToken,
     ): MerchantLegalEntity {
         return $this->apiClient->getMerchantLegalEntity($accessToken);
+    }
+
+    /**
+     * Search payment method subscriptions.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchPaymentMethodSubscriptions(
+        string $accessToken,
+        array $filters = [],
+    ): PaymentMethodSubscriptionSearchResult {
+        return $this->apiClient->searchPaymentMethodSubscriptions($accessToken, $filters);
+    }
+
+    /**
+     * Get a specific payment method subscription by id.
+     */
+    public function getPaymentMethodSubscription(
+        string $accessToken,
+        string $id,
+    ): PaymentMethodSubscription {
+        return $this->apiClient->getPaymentMethodSubscription($accessToken, $id);
+    }
+
+    /**
+     * Patch payment method subscription.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function updatePaymentMethodSubscription(
+        string $accessToken,
+        string $id,
+        array $payload,
+    ): PaymentMethodSubscription {
+        return $this->apiClient->updatePaymentMethodSubscription($accessToken, $id, $payload);
+    }
+
+    /**
+     * Reprioritise payment method subscriptions.
+     *
+     * @param array<int, string> $orderedSubscriptionIds
+     */
+    public function reprioritisePaymentMethodSubscriptions(
+        string $accessToken,
+        string $code,
+        array $orderedSubscriptionIds,
+    ): PaymentMethodSubscriptionSearchResult {
+        return $this->apiClient->reprioritisePaymentMethodSubscriptions($accessToken, $code, $orderedSubscriptionIds);
     }
 
     /**
