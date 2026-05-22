@@ -10,8 +10,13 @@ use PinVandaag\BuckarooAPI\Model\AccessToken;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
 use PinVandaag\BuckarooAPI\Model\Customer;
 use PinVandaag\BuckarooAPI\Model\CustomerSearchResult;
+use PinVandaag\BuckarooAPI\Model\GlobalSearchResult;
 use PinVandaag\BuckarooAPI\Model\InternalTerminal;
 use PinVandaag\BuckarooAPI\Model\InternalTerminalConnectionStatus;
+use PinVandaag\BuckarooAPI\Model\Invoice;
+use PinVandaag\BuckarooAPI\Model\InvoiceAttachment;
+use PinVandaag\BuckarooAPI\Model\InvoiceCreditNote;
+use PinVandaag\BuckarooAPI\Model\InvoiceSearchResult;
 use PinVandaag\BuckarooAPI\Model\Merchant;
 use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
 use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
@@ -126,6 +131,48 @@ final class BuckarooAPIClient
         string $id,
     ): void {
         $this->apiClient->deleteCustomer($accessToken, $id);
+    }
+
+    /**
+     * Get invoice.
+     */
+    public function getInvoice(
+        string $accessToken,
+        string $id,
+    ): Invoice {
+        return $this->apiClient->getInvoice($accessToken, $id);
+    }
+
+    /**
+     * Get invoice attachment.
+     */
+    public function getInvoiceAttachment(
+        string $accessToken,
+        string $id,
+    ): InvoiceAttachment {
+        return $this->apiClient->getInvoiceAttachment($accessToken, $id);
+    }
+
+    /**
+     * Get credit note.
+     */
+    public function getInvoiceCreditNote(
+        string $accessToken,
+        string $id,
+    ): InvoiceCreditNote {
+        return $this->apiClient->getInvoiceCreditNote($accessToken, $id);
+    }
+
+    /**
+     * Search invoices.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchInvoices(
+        string $accessToken,
+        array $filters = [],
+    ): InvoiceSearchResult {
+        return $this->apiClient->searchInvoices($accessToken, $filters);
     }
 
     /**
@@ -371,6 +418,18 @@ final class BuckarooAPIClient
         string $reference,
     ): Sale {
         return $this->apiClient->getSaleByReference($accessToken, $reference);
+    }
+
+    /**
+     * Global search across Buckaroo resources.
+     */
+    public function search(
+        string $accessToken,
+        string $needle,
+        ?string $resourceType = null,
+        int $limit = 100,
+    ): GlobalSearchResult {
+        return $this->apiClient->search($accessToken, $needle, $resourceType, $limit);
     }
 
     /**

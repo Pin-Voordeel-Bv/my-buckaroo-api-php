@@ -13,8 +13,13 @@ use PinVandaag\BuckarooAPI\Model\AccessToken;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
 use PinVandaag\BuckarooAPI\Model\Customer;
 use PinVandaag\BuckarooAPI\Model\CustomerSearchResult;
+use PinVandaag\BuckarooAPI\Model\GlobalSearchResult;
 use PinVandaag\BuckarooAPI\Model\InternalTerminal;
 use PinVandaag\BuckarooAPI\Model\InternalTerminalConnectionStatus;
+use PinVandaag\BuckarooAPI\Model\Invoice;
+use PinVandaag\BuckarooAPI\Model\InvoiceAttachment;
+use PinVandaag\BuckarooAPI\Model\InvoiceCreditNote;
+use PinVandaag\BuckarooAPI\Model\InvoiceSearchResult;
 use PinVandaag\BuckarooAPI\Model\Merchant;
 use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
 use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
@@ -273,6 +278,103 @@ final class APIClient
             accessToken: $accessToken,
             actionDescription: sprintf('delete Buckaroo customer "%s"', $id),
         );
+    }
+
+    /**
+     * Get invoice.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getInvoice(
+        string $accessToken,
+        string $id,
+    ): Invoice {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo invoice request requires an id.');
+        }
+
+        /** @var Invoice $invoice */
+        $invoice = $this->getHal(
+            endpoint: sprintf('/v1/invoices/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: Invoice::class,
+            actionDescription: sprintf('get Buckaroo invoice "%s"', $id),
+        );
+
+        return $invoice;
+    }
+
+    /**
+     * Get invoice attachment.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getInvoiceAttachment(
+        string $accessToken,
+        string $id,
+    ): InvoiceAttachment {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo invoice attachment request requires an id.');
+        }
+
+        /** @var InvoiceAttachment $attachment */
+        $attachment = $this->getHal(
+            endpoint: sprintf('/v1/invoices/attachment/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: InvoiceAttachment::class,
+            actionDescription: sprintf('get Buckaroo invoice attachment "%s"', $id),
+        );
+
+        return $attachment;
+    }
+
+    /**
+     * Get credit note.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getInvoiceCreditNote(
+        string $accessToken,
+        string $id,
+    ): InvoiceCreditNote {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo invoice credit note request requires an id.');
+        }
+
+        /** @var InvoiceCreditNote $creditNote */
+        $creditNote = $this->getHal(
+            endpoint: sprintf('/v1/invoices/creditnote/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: InvoiceCreditNote::class,
+            actionDescription: sprintf('get Buckaroo invoice credit note "%s"', $id),
+        );
+
+        return $creditNote;
+    }
+
+    /**
+     * Search invoices.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchInvoices(
+        string $accessToken,
+        array $filters = [],
+    ): InvoiceSearchResult {
+        $filters['limit'] ??= 100;
+
+        /** @var InvoiceSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/invoices/search',
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: InvoiceSearchResult::class,
+            actionDescription: 'search Buckaroo invoices',
+        );
+
+        return $result;
     }
 
     /**
@@ -830,6 +932,37 @@ final class APIClient
         );
 
         return $sale;
+    }
+
+    /**
+     * Global search across Buckaroo resources.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function search(
+        string $accessToken,
+        string $needle,
+        ?string $resourceType = null,
+        int $limit = 100,
+    ): GlobalSearchResult {
+        if ($needle === '') {
+            throw new BuckarooAPIException('Buckaroo global search requires a needle.');
+        }
+
+        /** @var GlobalSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/search',
+            accessToken: $accessToken,
+            filters: [
+                'resourceType' => $resourceType,
+                'needle' => $needle,
+                'limit' => $limit,
+            ],
+            responseClass: GlobalSearchResult::class,
+            actionDescription: 'perform Buckaroo global search',
+        );
+
+        return $result;
     }
 
     /**
