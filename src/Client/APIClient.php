@@ -10,6 +10,9 @@ use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use PinVandaag\BuckarooAPI\Exception\BuckarooAPIException;
 use PinVandaag\BuckarooAPI\Model\AccessToken;
+use PinVandaag\BuckarooAPI\Model\AccountPayoutSettings;
+use PinVandaag\BuckarooAPI\Model\AccountSearchResult;
+use PinVandaag\BuckarooAPI\Model\Account;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
 use PinVandaag\BuckarooAPI\Model\Customer;
 use PinVandaag\BuckarooAPI\Model\CustomerSearchResult;
@@ -194,6 +197,87 @@ final class APIClient
         }
 
         return $apiKey;
+    }
+
+    /**
+     * Get all accounts.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getAccounts(
+        string $accessToken,
+    ): AccountSearchResult {
+        /** @var AccountSearchResult $result */
+        $result = $this->getHal(
+            endpoint: '/v1/accounts',
+            accessToken: $accessToken,
+            responseClass: AccountSearchResult::class,
+            actionDescription: 'get Buckaroo accounts',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Get an account by id.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getAccount(
+        string $accessToken,
+        string $id,
+    ): Account {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo account request requires an id.');
+        }
+
+        /** @var Account $account */
+        $account = $this->getHal(
+            endpoint: sprintf('/v1/accounts/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: Account::class,
+            actionDescription: sprintf('get Buckaroo account "%s"', $id),
+        );
+
+        return $account;
+    }
+
+    /**
+     * Update the payout settings of an account.
+     *
+     * @param array<string, mixed> $payload
+     *
+     * @throws BuckarooAPIException
+     */
+    public function updateAccountPayoutSettings(
+        string $accessToken,
+        string $id,
+        array $payload,
+    ): AccountPayoutSettings {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo account payout settings update requires an id.');
+        }
+
+        $payload = $this->filterPayload($payload);
+
+        if (($payload['grouping'] ?? null) === null || $payload['grouping'] === '') {
+            throw new BuckarooAPIException('Buckaroo account payout settings update requires grouping.');
+        }
+
+        if (($payload['payoutInterval'] ?? null) === null || $payload['payoutInterval'] === '') {
+            throw new BuckarooAPIException('Buckaroo account payout settings update requires payoutInterval.');
+        }
+
+        /** @var AccountPayoutSettings $settings */
+        $settings = $this->patchHal(
+            endpoint: sprintf('/v1/accounts/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            payload: $payload,
+            responseClass: AccountPayoutSettings::class,
+            actionDescription: sprintf('update Buckaroo account "%s" payout settings', $id),
+        );
+
+        return $settings;
     }
 
     /**

@@ -7,6 +7,9 @@ namespace PinVandaag\BuckarooAPI;
 use GuzzleHttp\Client;
 use PinVandaag\BuckarooAPI\Client\APIClient;
 use PinVandaag\BuckarooAPI\Model\AccessToken;
+use PinVandaag\BuckarooAPI\Model\AccountPayoutSettings;
+use PinVandaag\BuckarooAPI\Model\AccountSearchResult;
+use PinVandaag\BuckarooAPI\Model\Account;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
 use PinVandaag\BuckarooAPI\Model\Customer;
 use PinVandaag\BuckarooAPI\Model\CustomerSearchResult;
@@ -91,6 +94,37 @@ final class BuckarooAPIClient
         string|array $scopes = "sale:read sale:write transaction:read",
     ): ApiKey {
         return $this->apiClient->createApiKey($accessToken, $name, $scopes);
+    }
+
+    /**
+     * Get all accounts.
+     */
+    public function getAccounts(string $accessToken): AccountSearchResult
+    {
+        return $this->apiClient->getAccounts($accessToken);
+    }
+
+    /**
+     * Get an account by id.
+     */
+    public function getAccount(
+        string $accessToken,
+        string $id,
+    ): Account {
+        return $this->apiClient->getAccount($accessToken, $id);
+    }
+
+    /**
+     * Update the payout settings of an account.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function updateAccountPayoutSettings(
+        string $accessToken,
+        string $id,
+        array $payload,
+    ): AccountPayoutSettings {
+        return $this->apiClient->updateAccountPayoutSettings($accessToken, $id, $payload);
     }
 
     /**
