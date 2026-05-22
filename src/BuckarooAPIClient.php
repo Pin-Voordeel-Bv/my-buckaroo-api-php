@@ -234,6 +234,41 @@ final class BuckarooAPIClient
     }
 
     /**
+     * Get application installations.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchInstallations(
+        string $accessToken,
+        array $filters = [],
+    ): ApplicationInstallationSearchResult {
+        return $this->apiClient->searchInstallations($accessToken, $filters);
+    }
+
+    /**
+     * Get installation.
+     */
+    public function getInstallation(
+        string $accessToken,
+        string $id,
+    ): ApplicationInstallation {
+        return $this->apiClient->getInstallation($accessToken, $id);
+    }
+
+    /**
+     * Update installation.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function updateInstallation(
+        string $accessToken,
+        string $id,
+        array $payload,
+    ): ApplicationInstallation {
+        return $this->apiClient->updateInstallation($accessToken, $id, $payload);
+    }
+
+    /**
      * Get invoice.
      */
     public function getInvoice(

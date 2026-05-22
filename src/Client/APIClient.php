@@ -508,6 +508,87 @@ final class APIClient
     }
 
     /**
+     * Get application installations.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchInstallations(
+        string $accessToken,
+        array $filters = [],
+    ): ApplicationInstallationSearchResult {
+        /** @var ApplicationInstallationSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/installations/search',
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: ApplicationInstallationSearchResult::class,
+            actionDescription: 'search Buckaroo installations',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Get installation.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getInstallation(
+        string $accessToken,
+        string $id,
+    ): ApplicationInstallation {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo installation request requires an id.');
+        }
+
+        /** @var ApplicationInstallation $installation */
+        $installation = $this->getHal(
+            endpoint: sprintf('/v1/installations/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: ApplicationInstallation::class,
+            actionDescription: sprintf('get Buckaroo installation "%s"', $id),
+        );
+
+        return $installation;
+    }
+
+    /**
+     * Update installation.
+     *
+     * @param array<string, mixed> $payload
+     *
+     * @throws BuckarooAPIException
+     */
+    public function updateInstallation(
+        string $accessToken,
+        string $id,
+        array $payload,
+    ): ApplicationInstallation {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo installation update requires an id.');
+        }
+
+        $payload = $this->filterPayload($payload);
+
+        if (($payload['status'] ?? null) === null || $payload['status'] === '') {
+            throw new BuckarooAPIException('Buckaroo installation update requires status.');
+        }
+
+        /** @var ApplicationInstallation $installation */
+        $installation = $this->patchHal(
+            endpoint: sprintf('/v1/installations/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            payload: $payload,
+            responseClass: ApplicationInstallation::class,
+            actionDescription: sprintf('update Buckaroo installation "%s"', $id),
+        );
+
+        return $installation;
+    }
+
+    /**
      * Get invoice.
      *
      * @throws BuckarooAPIException
