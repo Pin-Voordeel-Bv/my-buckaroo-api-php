@@ -25,6 +25,8 @@ use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
 use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
 use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscription;
 use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscriptionSearchResult;
+use PinVandaag\BuckarooAPI\Model\PayoutSearchResult;
+use PinVandaag\BuckarooAPI\Model\Payout;
 use PinVandaag\BuckarooAPI\Model\Sale;
 use PinVandaag\BuckarooAPI\Model\SaleSearchResult;
 use PinVandaag\BuckarooAPI\Model\Store;
@@ -577,6 +579,55 @@ final class APIClient
         );
 
         return $result;
+    }
+
+    /**
+     * Search payouts.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchPayouts(
+        string $accessToken,
+        array $filters = [],
+    ): PayoutSearchResult {
+        $filters['limit'] ??= 100;
+
+        /** @var PayoutSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/payouts/search',
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: PayoutSearchResult::class,
+            actionDescription: 'search Buckaroo payouts',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Get an existing payout.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getPayout(
+        string $accessToken,
+        string $id,
+    ): Payout {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo payout request requires an id.');
+        }
+
+        /** @var Payout $payout */
+        $payout = $this->getHal(
+            endpoint: sprintf('/v1/payouts/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: Payout::class,
+            actionDescription: sprintf('get Buckaroo payout "%s"', $id),
+        );
+
+        return $payout;
     }
 
     /**

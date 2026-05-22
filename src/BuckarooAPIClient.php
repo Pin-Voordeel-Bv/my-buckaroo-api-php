@@ -22,6 +22,8 @@ use PinVandaag\BuckarooAPI\Model\MerchantFeatures;
 use PinVandaag\BuckarooAPI\Model\MerchantLegalEntity;
 use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscription;
 use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscriptionSearchResult;
+use PinVandaag\BuckarooAPI\Model\PayoutSearchResult;
+use PinVandaag\BuckarooAPI\Model\Payout;
 use PinVandaag\BuckarooAPI\Model\Sale;
 use PinVandaag\BuckarooAPI\Model\SaleSearchResult;
 use PinVandaag\BuckarooAPI\Model\Store;
@@ -261,6 +263,28 @@ final class BuckarooAPIClient
         array $orderedSubscriptionIds,
     ): PaymentMethodSubscriptionSearchResult {
         return $this->apiClient->reprioritisePaymentMethodSubscriptions($accessToken, $code, $orderedSubscriptionIds);
+    }
+
+    /**
+     * Search payouts.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchPayouts(
+        string $accessToken,
+        array $filters = [],
+    ): PayoutSearchResult {
+        return $this->apiClient->searchPayouts($accessToken, $filters);
+    }
+
+    /**
+     * Get an existing payout.
+     */
+    public function getPayout(
+        string $accessToken,
+        string $id,
+    ): Payout {
+        return $this->apiClient->getPayout($accessToken, $id);
     }
 
     /**
