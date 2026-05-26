@@ -54,8 +54,8 @@ use PinVandaag\BuckarooAPI\Model\TransactionSearchResult;
 use PinVandaag\BuckarooAPI\Model\Webhook;
 use PinVandaag\BuckarooAPI\Model\WebhookEventTypeList;
 use PinVandaag\BuckarooAPI\Model\WebhookSearchResult;
-use Psr\Log\LoggerAwareTrait;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerAwareTrait;
 use SensitiveParameter;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerException;
@@ -114,10 +114,10 @@ final class APIClient
         try {
             $response = $this->client->request('POST', $this->uri('/oauth/token'), [
                 'auth' => [$clientId, $clientSecret],
-                'form_params' => $formParams,
                 'headers' => [
                     'Accept' => 'application/json',
                 ],
+                'form_params' => $formParams,
                 'connect_timeout' => 8.0,
                 'http_errors' => false,
                 'timeout' => 25.0,
@@ -142,7 +142,7 @@ final class APIClient
 
         if ($statusCode < 200 || $statusCode >= 300) {
             throw new BuckarooAPIException(
-                sprintf('Buckaroo OAuth token request failed with HTTP %d: %s', $statusCode, $body),
+                $this->errorMessageFromResponseBody($body, 'retrieve Buckaroo OAuth token', $statusCode),
                 $statusCode,
             );
         }
@@ -2154,7 +2154,7 @@ final class APIClient
             endpoint: $endpoint,
             options: [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Authorization' => $this->authorizationHeader($accessToken),
                     'Accept' => 'application/hal+json',
                 ],
             ],
@@ -2162,10 +2162,11 @@ final class APIClient
         );
 
         $statusCode = $response->getStatusCode();
+        $body = (string) $response->getBody();
 
         if ($statusCode !== 204 && ($statusCode < 200 || $statusCode >= 300)) {
             throw new BuckarooAPIException(
-                sprintf('Buckaroo request to %s failed with HTTP %d.', $endpoint, $statusCode),
+                $this->errorMessageFromResponseBody($body, $actionDescription, $statusCode),
                 $statusCode
             );
         }
@@ -2194,13 +2195,13 @@ final class APIClient
             method: 'POST',
             endpoint: $endpoint,
             options: [
-                'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Accept' => 'application/hal+json',
-                        'Content-Type' => 'application/json',
-                    ],
-                    'body' => $this->serializer->serialize($payload, 'json'),
+                 'headers' => [
+                    'Authorization' => $this->authorizationHeader($accessToken),
+                    'Accept' => 'application/hal+json',
+                    'Content-Type' => 'application/json',
                 ],
+                'body' => $this->serializer->serialize($payload, 'json'),
+            ],
             actionDescription: $actionDescription,
         );
 
@@ -2230,11 +2231,11 @@ final class APIClient
             endpoint: $endpoint,
             options: [
                 'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Accept' => 'application/hal+json',
-                    ],
-                    'query' => $query,
+                    'Authorization' => $this->authorizationHeader($accessToken),
+                    'Accept' => 'application/hal+json',
                 ],
+                'query' => $query,
+            ],
             actionDescription: $actionDescription,
         );
 
@@ -2265,12 +2266,12 @@ final class APIClient
             endpoint: $endpoint,
             options: [
                 'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Accept' => 'application/hal+json',
-                        'Content-Type' => 'application/json',
-                    ],
-                    'body' => $this->serializer->serialize($payload, 'json'),
+                    'Authorization' => $this->authorizationHeader($accessToken),
+                    'Accept' => 'application/hal+json',
+                    'Content-Type' => 'application/json',
                 ],
+                'body' => $this->serializer->serialize($payload, 'json'),
+            ],
             actionDescription: $actionDescription,
         );
 
@@ -2290,7 +2291,7 @@ final class APIClient
             endpoint: $endpoint,
             options: [
                 'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Authorization' => $this->authorizationHeader($accessToken),
                         'Accept' => 'application/hal+json',
                     ],
                 ],
@@ -2298,15 +2299,16 @@ final class APIClient
         );
 
         $statusCode = $response->getStatusCode();
+        $body = (string) $response->getBody();
 
         if ($statusCode !== 204 && ($statusCode < 200 || $statusCode >= 300)) {
             throw new BuckarooAPIException(
-                sprintf('Buckaroo request to %s failed with HTTP %d.', $endpoint, $statusCode),
+                $this->errorMessageFromResponseBody($body, $actionDescription, $statusCode),
                 $statusCode
             );
         }
     }
- 
+
     /**
      * @param array<string, mixed> $options
      *
@@ -2327,6 +2329,55 @@ final class APIClient
         } catch (Throwable $exception) {
             throw new BuckarooAPIException(sprintf('Could not %s.', $actionDescription), 0, $exception);
         }
+    }
+
+    private function errorMessageFromResponseBody(
+        string $body,
+        string $actionDescription,
+        int $statusCode,
+    ): string {
+        $trimmedBody = trim($body);
+
+        if ($trimmedBody === '') {
+            return sprintf(
+                'Buckaroo request failed while trying to %s with HTTP %d.',
+                $actionDescription,
+                $statusCode
+            );
+        }
+
+        $decoded = json_decode($trimmedBody, true);
+
+        if (is_array($decoded)) {
+            if (isset($decoded['detail']) && is_string($decoded['detail']) && $decoded['detail'] !== '') {
+                return $decoded['detail'];
+            }
+
+            if (isset($decoded['title']) && is_string($decoded['title']) && $decoded['title'] !== '') {
+                return $decoded['title'];
+            }
+
+            if (isset($decoded['message']) && is_string($decoded['message']) && $decoded['message'] !== '') {
+                return $decoded['message'];
+            }
+        }
+
+        return $trimmedBody;
+    }
+
+    private function authorizationHeader(string $accessToken): string
+    {
+        $accessToken = trim($accessToken);
+
+        if ($accessToken === '') {
+            throw new BuckarooAPIException('Buckaroo access token is empty.');
+        }
+
+        if (str_starts_with($accessToken, 'Bearer ')) {
+            return $accessToken;
+        }
+
+        return 'Bearer ' . $accessToken;
     }
 
     /**
