@@ -34,6 +34,11 @@ use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscription;
 use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscriptionSearchResult;
 use PinVandaag\BuckarooAPI\Model\PayoutSearchResult;
 use PinVandaag\BuckarooAPI\Model\Payout;
+use PinVandaag\BuckarooAPI\Model\Report;
+use PinVandaag\BuckarooAPI\Model\ReportDefinitionList;
+use PinVandaag\BuckarooAPI\Model\ReportSchedule;
+use PinVandaag\BuckarooAPI\Model\ReportScheduleSearchResult;
+use PinVandaag\BuckarooAPI\Model\ReportSearchResult;
 use PinVandaag\BuckarooAPI\Model\Sale;
 use PinVandaag\BuckarooAPI\Model\SaleSearchResult;
 use PinVandaag\BuckarooAPI\Model\ServiceSubscription;
@@ -1232,6 +1237,309 @@ final class APIClient
             accessToken: $accessToken,
             actionDescription: sprintf('cancel current WECR transaction for Buckaroo internal terminal "%s"', $terminalId),
         );
+    }
+
+    /**
+     * Create a report.
+     *
+     * @param array<string, mixed> $report
+     *
+     * @throws BuckarooAPIException
+     */
+    public function createReport(
+        string $accessToken,
+        array $report,
+    ): Report {
+        $payload = $this->filterPayload($report);
+
+        if (array_key_exists('filters', $report) && is_array($report['filters'])) {
+            $payload['filters'] = $report['filters'];
+        }
+
+        foreach (['reportDefinitionId', 'scope', 'recipients'] as $requiredField) {
+            if (($payload[$requiredField] ?? null) === null || $payload[$requiredField] === '') {
+                throw new BuckarooAPIException(sprintf('Buckaroo report payload requires "%s".', $requiredField));
+            }
+        }
+
+        if (!array_key_exists('filters', $payload)) {
+            $payload['filters'] = [];
+        }
+
+        if (!is_array($payload['filters'])) {
+            throw new BuckarooAPIException('Buckaroo report payload requires filters as array.');
+        }
+
+        if (!is_array($payload['recipients']) || $payload['recipients'] === []) {
+            throw new BuckarooAPIException('Buckaroo report payload requires at least one recipient.');
+        }
+
+        /** @var Report $createdReport */
+        $createdReport = $this->postHalSearch(
+            endpoint: '/v1/reporting/reports',
+            accessToken: $accessToken,
+            filters: $payload,
+            responseClass: Report::class,
+            actionDescription: 'create Buckaroo report',
+        );
+
+        return $createdReport;
+    }
+
+    /**
+     * Get a report.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getReport(
+        string $accessToken,
+        string $id,
+    ): Report {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo report request requires an id.');
+        }
+
+        /** @var Report $report */
+        $report = $this->getHal(
+            endpoint: sprintf('/v1/reporting/reports/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: Report::class,
+            actionDescription: sprintf('get Buckaroo report "%s"', $id),
+        );
+
+        return $report;
+    }
+
+    /**
+     * Search filtered reports.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchReports(
+        string $accessToken,
+        array $filters = [],
+    ): ReportSearchResult {
+        $filters['limit'] ??= 100;
+
+        /** @var ReportSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/reporting/reports/search',
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: ReportSearchResult::class,
+            actionDescription: 'search Buckaroo reports',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Get report definitions.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getReportDefinitions(
+        string $accessToken,
+    ): ReportDefinitionList {
+        /** @var ReportDefinitionList $result */
+        $result = $this->getHal(
+            endpoint: '/v1/reporting/definitions',
+            accessToken: $accessToken,
+            responseClass: ReportDefinitionList::class,
+            actionDescription: 'get Buckaroo report definitions',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Search report definitions.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchReportDefinitions(
+        string $accessToken,
+    ): ReportDefinitionList {
+        /** @var ReportDefinitionList $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/reporting/definitions/search',
+            accessToken: $accessToken,
+            filters: [],
+            responseClass: ReportDefinitionList::class,
+            actionDescription: 'search Buckaroo report definitions',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Create a report schedule.
+     *
+     * @param array<string, mixed> $schedule
+     *
+     * @throws BuckarooAPIException
+     */
+    public function createReportSchedule(
+        string $accessToken,
+        array $schedule,
+    ): ReportSchedule {
+        $payload = $this->filterPayload($schedule);
+
+        if (array_key_exists('filters', $schedule) && is_array($schedule['filters'])) {
+            $payload['filters'] = $schedule['filters'];
+        }
+
+        foreach (['reportDefinitionId', 'status', 'interval', 'scope', 'recipients'] as $requiredField) {
+            if (($payload[$requiredField] ?? null) === null || $payload[$requiredField] === '') {
+                throw new BuckarooAPIException(sprintf('Buckaroo report schedule payload requires "%s".', $requiredField));
+            }
+        }
+
+        if (!array_key_exists('filters', $payload)) {
+            $payload['filters'] = [];
+        }
+
+        if (!is_array($payload['filters'])) {
+            throw new BuckarooAPIException('Buckaroo report schedule payload requires filters as array.');
+        }
+
+        if (!is_array($payload['recipients']) || $payload['recipients'] === []) {
+            throw new BuckarooAPIException('Buckaroo report schedule payload requires at least one recipient.');
+        }
+
+        /** @var ReportSchedule $createdSchedule */
+        $createdSchedule = $this->postHalSearch(
+            endpoint: '/v1/reporting/schedules',
+            accessToken: $accessToken,
+            filters: $payload,
+            responseClass: ReportSchedule::class,
+            actionDescription: 'create Buckaroo report schedule',
+        );
+
+        return $createdSchedule;
+    }
+
+    /**
+     * Update a report schedule.
+     *
+     * @param array<string, mixed> $schedule
+     *
+     * @throws BuckarooAPIException
+     */
+    public function updateReportSchedule(
+        string $accessToken,
+        string $id,
+        array $schedule,
+    ): ReportSchedule {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo report schedule update requires an id.');
+        }
+
+        $payload = $this->filterPayload($schedule);
+
+        if (array_key_exists('filters', $schedule) && is_array($schedule['filters'])) {
+            $payload['filters'] = $schedule['filters'];
+        }
+
+        foreach (['reportDefinitionId', 'status', 'interval', 'scope', 'recipients'] as $requiredField) {
+            if (($payload[$requiredField] ?? null) === null || $payload[$requiredField] === '') {
+                throw new BuckarooAPIException(sprintf('Buckaroo report schedule update requires "%s".', $requiredField));
+            }
+        }
+
+        if (!array_key_exists('filters', $payload)) {
+            $payload['filters'] = [];
+        }
+
+        if (!is_array($payload['filters'])) {
+            throw new BuckarooAPIException('Buckaroo report schedule update requires filters as array.');
+        }
+
+        if (!is_array($payload['recipients']) || $payload['recipients'] === []) {
+            throw new BuckarooAPIException('Buckaroo report schedule update requires at least one recipient.');
+        }
+
+        /** @var ReportSchedule $updatedSchedule */
+        $updatedSchedule = $this->patchHal(
+            endpoint: sprintf('/v1/reporting/schedules/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            payload: $payload,
+            responseClass: ReportSchedule::class,
+            actionDescription: sprintf('update Buckaroo report schedule "%s"', $id),
+        );
+
+        return $updatedSchedule;
+    }
+
+    /**
+     * Get a report schedule.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getReportSchedule(
+        string $accessToken,
+        string $id,
+    ): ReportSchedule {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo report schedule request requires an id.');
+        }
+
+        /** @var ReportSchedule $schedule */
+        $schedule = $this->getHal(
+            endpoint: sprintf('/v1/reporting/schedules/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: ReportSchedule::class,
+            actionDescription: sprintf('get Buckaroo report schedule "%s"', $id),
+        );
+
+        return $schedule;
+    }
+
+    /**
+     * Delete a report schedule.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function deleteReportSchedule(
+        string $accessToken,
+        string $id,
+    ): void {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo report schedule delete requires an id.');
+        }
+
+        $this->deleteHal(
+            endpoint: sprintf('/v1/reporting/schedules/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            actionDescription: sprintf('delete Buckaroo report schedule "%s"', $id),
+        );
+    }
+
+    /**
+     * Search report schedules.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchReportSchedules(
+        string $accessToken,
+        array $filters = [],
+    ): ReportScheduleSearchResult {
+        $filters['limit'] ??= 100;
+
+        /** @var ReportScheduleSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/reporting/schedules/search',
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: ReportScheduleSearchResult::class,
+            actionDescription: 'search Buckaroo report schedules',
+        );
+
+        return $result;
     }
 
     /**

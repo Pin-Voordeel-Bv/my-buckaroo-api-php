@@ -31,6 +31,11 @@ use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscription;
 use PinVandaag\BuckarooAPI\Model\PaymentMethodSubscriptionSearchResult;
 use PinVandaag\BuckarooAPI\Model\PayoutSearchResult;
 use PinVandaag\BuckarooAPI\Model\Payout;
+use PinVandaag\BuckarooAPI\Model\Report;
+use PinVandaag\BuckarooAPI\Model\ReportDefinitionList;
+use PinVandaag\BuckarooAPI\Model\ReportSchedule;
+use PinVandaag\BuckarooAPI\Model\ReportScheduleSearchResult;
+use PinVandaag\BuckarooAPI\Model\ReportSearchResult;
 use PinVandaag\BuckarooAPI\Model\Sale;
 use PinVandaag\BuckarooAPI\Model\SaleSearchResult;
 use PinVandaag\BuckarooAPI\Model\ServiceSubscription;
@@ -552,6 +557,115 @@ final class BuckarooAPIClient
         string $terminalId,
     ): void {
         $this->apiClient->cancelInternalTerminalAction($accessToken, $terminalId);
+    }
+
+    /**
+     * Create a report.
+     *
+     * @param array<string, mixed> $report
+     */
+    public function createReport(
+        string $accessToken,
+        array $report,
+    ): Report {
+        return $this->apiClient->createReport($accessToken, $report);
+    }
+
+    /**
+     * Get a report.
+     */
+    public function getReport(
+        string $accessToken,
+        string $id,
+    ): Report {
+        return $this->apiClient->getReport($accessToken, $id);
+    }
+
+    /**
+     * Search filtered reports.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchReports(
+        string $accessToken,
+        array $filters = [],
+    ): ReportSearchResult {
+        return $this->apiClient->searchReports($accessToken, $filters);
+    }
+
+    /**
+     * Get report definitions.
+     */
+    public function getReportDefinitions(
+        string $accessToken,
+    ): ReportDefinitionList {
+        return $this->apiClient->getReportDefinitions($accessToken);
+    }
+
+    /**
+     * Search report definitions.
+     */
+    public function searchReportDefinitions(
+        string $accessToken,
+    ): ReportDefinitionList {
+        return $this->apiClient->searchReportDefinitions($accessToken);
+    }
+
+    /**
+     * Create a report schedule.
+     *
+     * @param array<string, mixed> $schedule
+     */
+    public function createReportSchedule(
+        string $accessToken,
+        array $schedule,
+    ): ReportSchedule {
+        return $this->apiClient->createReportSchedule($accessToken, $schedule);
+    }
+
+    /**
+     * Update a report schedule.
+     *
+     * @param array<string, mixed> $schedule
+     */
+    public function updateReportSchedule(
+        string $accessToken,
+        string $id,
+        array $schedule,
+    ): ReportSchedule {
+        return $this->apiClient->updateReportSchedule($accessToken, $id, $schedule);
+    }
+
+    /**
+     * Get a report schedule.
+     */
+    public function getReportSchedule(
+        string $accessToken,
+        string $id,
+    ): ReportSchedule {
+        return $this->apiClient->getReportSchedule($accessToken, $id);
+    }
+
+    /**
+     * Delete a report schedule.
+     */
+    public function deleteReportSchedule(
+        string $accessToken,
+        string $id,
+    ): void {
+        $this->apiClient->deleteReportSchedule($accessToken, $id);
+    }
+
+    /**
+     * Search report schedules.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchReportSchedules(
+        string $accessToken,
+        array $filters = [],
+    ): ReportScheduleSearchResult {
+        return $this->apiClient->searchReportSchedules($accessToken, $filters);
     }
 
     /**
