@@ -43,6 +43,9 @@ use PinVandaag\BuckarooAPI\Model\SmartTerminalMdmSettings;
 use PinVandaag\BuckarooAPI\Model\TerminalSearchResult;
 use PinVandaag\BuckarooAPI\Model\Transaction;
 use PinVandaag\BuckarooAPI\Model\TransactionSearchResult;
+use PinVandaag\BuckarooAPI\Model\Webhook;
+use PinVandaag\BuckarooAPI\Model\WebhookEventTypeList;
+use PinVandaag\BuckarooAPI\Model\WebhookSearchResult;
 use Psr\Log\LoggerInterface;
 use SensitiveParameter;
 
@@ -731,5 +734,71 @@ final class BuckarooAPIClient
         array $store,
     ): Store {
         return $this->apiClient->updateStore($accessToken, $storeId, $store);
+    }
+
+    /**
+     * List webhook event types.
+     */
+    public function getWebhookEventTypes(
+        string $accessToken,
+    ): WebhookEventTypeList {
+        return $this->apiClient->getWebhookEventTypes($accessToken);
+    }
+
+    /**
+     * Search filtered webhook configurations.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function searchWebhooks(
+        string $accessToken,
+        array $filters = [],
+    ): WebhookSearchResult {
+        return $this->apiClient->searchWebhooks($accessToken, $filters);
+    }
+
+    /**
+     * Add a new webhook configuration.
+     *
+     * @param array<string, mixed> $webhook
+     */
+    public function createWebhook(
+        string $accessToken,
+        array $webhook,
+    ): Webhook {
+        return $this->apiClient->createWebhook($accessToken, $webhook);
+    }
+
+    /**
+     * Get an existing webhook configuration.
+     */
+    public function getWebhook(
+        string $accessToken,
+        string $id,
+    ): Webhook {
+        return $this->apiClient->getWebhook($accessToken, $id);
+    }
+
+    /**
+     * Update an existing webhook configuration.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function updateWebhook(
+        string $accessToken,
+        string $id,
+        array $payload,
+    ): Webhook {
+        return $this->apiClient->updateWebhook($accessToken, $id, $payload);
+    }
+
+    /**
+     * Delete an existing webhook configuration.
+     */
+    public function deleteWebhook(
+        string $accessToken,
+        string $id,
+    ): void {
+        $this->apiClient->deleteWebhook($accessToken, $id);
     }
 }

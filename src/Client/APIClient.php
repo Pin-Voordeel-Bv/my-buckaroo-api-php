@@ -46,6 +46,9 @@ use PinVandaag\BuckarooAPI\Model\SmartTerminalMdmSettings;
 use PinVandaag\BuckarooAPI\Model\TerminalSearchResult;
 use PinVandaag\BuckarooAPI\Model\Transaction;
 use PinVandaag\BuckarooAPI\Model\TransactionSearchResult;
+use PinVandaag\BuckarooAPI\Model\Webhook;
+use PinVandaag\BuckarooAPI\Model\WebhookEventTypeList;
+use PinVandaag\BuckarooAPI\Model\WebhookSearchResult;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
@@ -1663,6 +1666,169 @@ final class APIClient
         );
 
         return $updatedStore;
+    }
+
+    /**
+     * List webhook event types.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getWebhookEventTypes(
+        string $accessToken,
+    ): WebhookEventTypeList {
+        /** @var WebhookEventTypeList $result */
+        $result = $this->getHal(
+            endpoint: '/v1/webhooks/events',
+            accessToken: $accessToken,
+            responseClass: WebhookEventTypeList::class,
+            actionDescription: 'get Buckaroo webhook event types',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Search filtered webhook configurations.
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @throws BuckarooAPIException
+     */
+    public function searchWebhooks(
+        string $accessToken,
+        array $filters = [],
+    ): WebhookSearchResult {
+        $filters['limit'] ??= 100;
+
+        /** @var WebhookSearchResult $result */
+        $result = $this->postHalSearch(
+            endpoint: '/v1/webhooks/search',
+            accessToken: $accessToken,
+            filters: $filters,
+            responseClass: WebhookSearchResult::class,
+            actionDescription: 'search Buckaroo webhooks',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Add a new webhook configuration.
+     *
+     * @param array<string, mixed> $webhook
+     *
+     * @throws BuckarooAPIException
+     */
+    public function createWebhook(
+        string $accessToken,
+        array $webhook,
+    ): Webhook {
+        $payload = $this->filterPayload($webhook);
+
+        foreach (['url', 'eventTypes', 'maxConcurrency', 'secret'] as $requiredField) {
+            if (($payload[$requiredField] ?? null) === null || $payload[$requiredField] === '') {
+                throw new BuckarooAPIException(sprintf('Buckaroo webhook payload requires "%s".', $requiredField));
+            }
+        }
+
+        if (!is_array($payload['eventTypes']) || $payload['eventTypes'] === []) {
+            throw new BuckarooAPIException('Buckaroo webhook payload requires at least one eventType.');
+        }
+
+        /** @var Webhook $createdWebhook */
+        $createdWebhook = $this->postHalSearch(
+            endpoint: '/v1/webhooks',
+            accessToken: $accessToken,
+            filters: $payload,
+            responseClass: Webhook::class,
+            actionDescription: 'create Buckaroo webhook',
+        );
+
+        return $createdWebhook;
+    }
+
+    /**
+     * Get an existing webhook configuration.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getWebhook(
+        string $accessToken,
+        string $id,
+    ): Webhook {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo webhook request requires an id.');
+        }
+
+        /** @var Webhook $webhook */
+        $webhook = $this->getHal(
+            endpoint: sprintf('/v1/webhooks/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            responseClass: Webhook::class,
+            actionDescription: sprintf('get Buckaroo webhook "%s"', $id),
+        );
+
+        return $webhook;
+    }
+
+    /**
+     * Update an existing webhook configuration.
+     *
+     * @param array<string, mixed> $payload
+     *
+     * @throws BuckarooAPIException
+     */
+    public function updateWebhook(
+        string $accessToken,
+        string $id,
+        array $payload,
+    ): Webhook {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo webhook update requires an id.');
+        }
+
+        $payload = $this->filterPayload($payload);
+
+        foreach (['url', 'maxConcurrency', 'eventTypes', 'status'] as $requiredField) {
+            if (($payload[$requiredField] ?? null) === null || $payload[$requiredField] === '') {
+                throw new BuckarooAPIException(sprintf('Buckaroo webhook update requires "%s".', $requiredField));
+            }
+        }
+
+        if (!is_array($payload['eventTypes']) || $payload['eventTypes'] === []) {
+            throw new BuckarooAPIException('Buckaroo webhook update requires at least one eventType.');
+        }
+
+        /** @var Webhook $webhook */
+        $webhook = $this->patchHal(
+            endpoint: sprintf('/v1/webhooks/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            payload: $payload,
+            responseClass: Webhook::class,
+            actionDescription: sprintf('update Buckaroo webhook "%s"', $id),
+        );
+
+        return $webhook;
+    }
+
+    /**
+     * Delete an existing webhook configuration.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function deleteWebhook(
+        string $accessToken,
+        string $id,
+    ): void {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo webhook delete requires an id.');
+        }
+
+        $this->deleteHal(
+            endpoint: sprintf('/v1/webhooks/%s', rawurlencode($id)),
+            accessToken: $accessToken,
+            actionDescription: sprintf('delete Buckaroo webhook "%s"', $id),
+        );
     }
 
     /**
