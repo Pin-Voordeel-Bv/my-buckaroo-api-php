@@ -10,6 +10,7 @@ final readonly class ApiKey
      * @param array<string, mixed> $links
      */
     public function __construct(
+        public ?string $apiKey = null,
         public string $id = '',
         public string $key = '',
         public string $name = '',

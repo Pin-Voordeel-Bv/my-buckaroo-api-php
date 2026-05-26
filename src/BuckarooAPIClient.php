@@ -11,6 +11,7 @@ use PinVandaag\BuckarooAPI\Model\AccountPayoutSettings;
 use PinVandaag\BuckarooAPI\Model\AccountSearchResult;
 use PinVandaag\BuckarooAPI\Model\Account;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
+use PinVandaag\BuckarooAPI\Model\ApiKeySearchResult;
 use PinVandaag\BuckarooAPI\Model\Application;
 use PinVandaag\BuckarooAPI\Model\ApplicationInstallation;
 use PinVandaag\BuckarooAPI\Model\ApplicationInstallationSearchResult;
@@ -88,17 +89,6 @@ final class BuckarooAPIClient
     }
 
     /**
-     * Create a long-lived API key with the given OAuth access token.
-     */
-    public function createApiKey(
-        AccessToken|string $accessToken,
-        string $name,
-        string|array $scopes = "sale:read sale:write transaction:read",
-    ): ApiKey {
-        return $this->apiClient->createApiKey($accessToken, $name, $scopes);
-    }
-
-    /**
      * Get all accounts.
      */
     public function getAccounts(string $accessToken): AccountSearchResult
@@ -127,6 +117,68 @@ final class BuckarooAPIClient
         array $payload,
     ): AccountPayoutSettings {
         return $this->apiClient->updateAccountPayoutSettings($accessToken, $id, $payload);
+    }
+
+    /**
+     * Create a long-lived API key with the given OAuth access token.
+     */
+    public function createApiKey(
+        AccessToken|string $accessToken,
+        string $name,
+        string|array $scopes = "sale:read sale:write transaction:read",
+    ): ApiKey {
+        return $this->apiClient->createApiKey($accessToken, $name, $scopes);
+    }
+
+    /**
+     * Get all existing API keys.
+     */
+    public function getApiKeys(
+        AccessToken|string $accessToken,
+        ?string $continuationToken = null,
+    ): ApiKeySearchResult {
+        return $this->apiClient->getApiKeys($accessToken, $continuationToken);
+    }
+
+    /**
+     * Get an existing API key.
+     */
+    public function getApiKey(
+        AccessToken|string $accessToken,
+        string $id,
+    ): ApiKey {
+        return $this->apiClient->getApiKey($accessToken, $id);
+    }
+
+    /**
+     * Disable an existing API key.
+     */
+    public function deleteApiKey(
+        AccessToken|string $accessToken,
+        string $id,
+    ): void {
+        $this->apiClient->deleteApiKey($accessToken, $id);
+    }
+
+    /**
+     * Update the given API key.
+     */
+    public function updateApiKey(
+        AccessToken|string $accessToken,
+        string $id,
+        string|array|null $scopes,
+    ): ApiKey {
+        return $this->apiClient->updateApiKey($accessToken, $id, $scopes);
+    }
+
+    /**
+     * Decrypt the given API key.
+     */
+    public function decryptApiKey(
+        AccessToken|string $accessToken,
+        string $id,
+    ): ApiKey {
+        return $this->apiClient->decryptApiKey($accessToken, $id);
     }
 
     /**

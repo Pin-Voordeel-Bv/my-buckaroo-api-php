@@ -14,6 +14,7 @@ use PinVandaag\BuckarooAPI\Model\AccountPayoutSettings;
 use PinVandaag\BuckarooAPI\Model\AccountSearchResult;
 use PinVandaag\BuckarooAPI\Model\Account;
 use PinVandaag\BuckarooAPI\Model\ApiKey;
+use PinVandaag\BuckarooAPI\Model\ApiKeySearchResult;
 use PinVandaag\BuckarooAPI\Model\Application;
 use PinVandaag\BuckarooAPI\Model\ApplicationInstallation;
 use PinVandaag\BuckarooAPI\Model\ApplicationInstallationSearchResult;
@@ -87,58 +88,6 @@ final class APIClient
         $this->baseUri = rtrim($baseUri, '/');
 
         return $this;
-    }
-
-    /**
-     * Create a long-lived Buckaroo API key using an OAuth access token.
-     *
-     * @throws BuckarooAPIException
-     */
-    public function createApiKey(
-        AccessToken|string $accessToken,
-        string $name,
-        string|array $scopes,
-    ): ApiKey {
-        $scopeString = is_array($scopes) ? implode(' ', $scopes) : $scopes;
-
-        $payload = [
-            'name' => $name,
-            'scopes' => $scopeString,
-        ];
-
-        try {
-            $response = $this->client->request(
-                'POST',
-                $this->uri('/v1/apikeys'),
-                [
-                    'headers' => [
-                        'Authorization' => is_string($accessToken)
-                            ? 'Bearer ' . $accessToken
-                            : $accessToken->authorizationHeader(),
-                        'Accept' => 'application/json',
-                        'Content-Type' => 'application/json',
-                    ],
-                    'body' => $this->serializer->serialize($payload, 'json'),
-                ],
-            );
-        } catch (Throwable $exception) {
-            throw new BuckarooAPIException('Could not create Buckaroo API key.', 0, $exception);
-        }
-
-        $body = (string) $response->getBody();
-
-        try {
-            /** @var ApiKey $apiKey */
-            $apiKey = $this->serializer->deserialize($body, ApiKey::class, 'json');
-        } catch (SerializerException $exception) {
-            throw new BuckarooAPIException('Could not deserialize Buckaroo API key response.', 0, $exception);
-        }
-
-        if ($apiKey->key === '') {
-            throw new BuckarooAPIException('Buckaroo API key response did not contain a key.');
-        }
-
-        return $apiKey;
     }
 
     /**
@@ -220,6 +169,198 @@ final class APIClient
         );
 
         return $settings;
+    }
+
+    /**
+     * Create a long-lived Buckaroo API key using an OAuth access token.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function createApiKey(
+        AccessToken|string $accessToken,
+        string $name,
+        string|array $scopes,
+    ): ApiKey {
+        if ($name === '') {
+            throw new BuckarooAPIException('Buckaroo API key payload requires a name.');
+        }
+
+         $scopeString = is_array($scopes) ? implode(' ', $scopes) : $scopes;
+
+        if ($scopeString === '') {
+            throw new BuckarooAPIException('Buckaroo API key payload requires scopes.');
+        }
+
+        $payload = [
+            'name' => $name,
+            'scopes' => $scopeString,
+        ];
+
+        try {
+            $response = $this->client->request('POST', $this->uri('/v1/apikeys'), [
+                'headers' => [
+                    'Authorization' => $this->authorizationHeader($accessToken),
+                   'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ],
+                'body' => $this->serializer->serialize($payload, 'json'),
+                'connect_timeout' => 8.0,
+                'http_errors' => false,
+                'timeout' => 25.0,
+                'verify' => true,
+            ]);
+        } catch (Throwable $exception) {
+            throw new BuckarooAPIException('Could not create Buckaroo API key.', 0, $exception);
+        }
+
+        $statusCode = $response->getStatusCode();
+        $body = (string) $response->getBody();
+
+        if ($statusCode < 200 || $statusCode >= 300) {
+            throw new BuckarooAPIException(
+                $this->errorMessageFromResponseBody($body, 'create Buckaroo API key', $statusCode),
+                $statusCode,
+            );
+        }
+
+        try {
+            /** @var ApiKey $apiKey */
+            $apiKey = $this->serializer->deserialize($body, ApiKey::class, 'json');
+        } catch (SerializerException $exception) {
+            throw new BuckarooAPIException('Could not deserialize Buckaroo API key response.', 0, $exception);
+        }
+
+        if ($apiKey->key === '') {
+            throw new BuckarooAPIException('Buckaroo API key response did not contain a key.');
+        }
+
+        return $apiKey;
+    }
+
+    /**
+     * Get all existing API keys.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getApiKeys(
+        AccessToken|string $accessToken,
+        ?string $continuationToken = null,
+    ): ApiKeySearchResult {
+        /** @var ApiKeySearchResult $result */
+        $result = $this->getHal(
+            endpoint: '/v1/apikeys',
+            accessToken: is_string($accessToken) ? $accessToken : $accessToken->accessToken,
+            responseClass: ApiKeySearchResult::class,
+            actionDescription: 'get Buckaroo API keys',
+            query: [
+                'continuationToken' => $continuationToken,
+            ],
+        );
+
+        return $result;
+    }
+
+    /**
+     * Get an existing API key.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function getApiKey(
+        AccessToken|string $accessToken,
+        string $id,
+    ): ApiKey {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo API key request requires an id.');
+        }
+
+        /** @var ApiKey $apiKey */
+        $apiKey = $this->getHal(
+            endpoint: sprintf('/v1/apikeys/%s', rawurlencode($id)),
+            accessToken: is_string($accessToken) ? $accessToken : $accessToken->accessToken,
+            responseClass: ApiKey::class,
+            actionDescription: sprintf('get Buckaroo API key "%s"', $id),
+        );
+
+        return $apiKey;
+    }
+
+    /**
+     * Disable an existing API key.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function deleteApiKey(
+        AccessToken|string $accessToken,
+        string $id,
+    ): void {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo API key delete requires an id.');
+        }
+
+        $this->deleteHal(
+            endpoint: sprintf('/v1/apikeys/%s', rawurlencode($id)),
+            accessToken: is_string($accessToken) ? $accessToken : $accessToken->accessToken,
+            actionDescription: sprintf('delete Buckaroo API key "%s"', $id),
+        );
+    }
+
+    /**
+     * Update the given API key.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function updateApiKey(
+        AccessToken|string $accessToken,
+        string $id,
+        string|array|null $scopes,
+    ): ApiKey {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo API key update requires an id.');
+        }
+
+        $scopeString = is_array($scopes) ? implode(' ', $scopes) : $scopes;
+
+        if ($scopeString === null || $scopeString === '') {
+            throw new BuckarooAPIException('Buckaroo API key update requires scopes.');
+        }
+
+        /** @var ApiKey $apiKey */
+        $apiKey = $this->patchHal(
+            endpoint: sprintf('/v1/apikeys/%s', rawurlencode($id)),
+            accessToken: is_string($accessToken) ? $accessToken : $accessToken->accessToken,
+            payload: [
+                'scopes' => $scopeString,
+            ],
+            responseClass: ApiKey::class,
+            actionDescription: sprintf('update Buckaroo API key "%s"', $id),
+        );
+
+        return $apiKey;
+    }
+
+    /**
+     * Decrypt the given API key.
+     *
+     * @throws BuckarooAPIException
+     */
+    public function decryptApiKey(
+        AccessToken|string $accessToken,
+        string $id,
+    ): ApiKey {
+        if ($id === '') {
+            throw new BuckarooAPIException('Buckaroo API key decrypt requires an id.');
+        }
+
+        /** @var ApiKey $apiKey */
+        $apiKey = $this->patchHal(
+            endpoint: sprintf('/v1/apikeys/%s/decrypt', rawurlencode($id)),
+            accessToken: is_string($accessToken) ? $accessToken : $accessToken->accessToken,
+            payload: [],
+            responseClass: ApiKey::class,
+            actionDescription: sprintf('decrypt Buckaroo API key "%s"', $id),
+        );
+
+        return $apiKey;
     }
 
     /**
@@ -2435,8 +2576,12 @@ final class APIClient
         return $trimmedBody;
     }
 
-    private function authorizationHeader(string $accessToken): string
+    private function authorizationHeader(AccessToken|string $accessToken): string
     {
+        if ($accessToken instanceof AccessToken) {
+            return $accessToken->authorizationHeader();
+        }
+
         $accessToken = trim($accessToken);
 
         if ($accessToken === '') {
