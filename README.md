@@ -2,7 +2,7 @@
 A PHP Wrapper for the <a href="https://docs.buckaroo.io/v2/reference/">My Buckaroo API</a>
 
 ## Installation
-`composer require pinvandaag/buckaroo-api-php`
+`composer require pinvandaag/my-buckaroo-api-php`
 
 ## Usage example
 
